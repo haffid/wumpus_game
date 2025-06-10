@@ -4,9 +4,9 @@ from src.board import Board
 from src.agent import Agent
 
 # --- CONFIGURACIÓN ---
-CELL_SIZE = 140        # Tamaño de cada celda en píxeles
-GRID_SIZE = 5          # Tamaño del tablero (5x5)
-STATUS_HEIGHT = 200    # Altura para mostrar mensajes e instrucciones
+CELL_SIZE = 100         # Puedes ajustarlo a 80 o 70 si quieres más pequeño
+GRID_SIZE = 5           # 5x5 como pide el proyecto
+STATUS_HEIGHT = max(100, int(CELL_SIZE * 1.2))  # Altura proporcional al tamaño de celda
 WINDOW_SIZE = CELL_SIZE * GRID_SIZE
 FPS = 30               # Cuadros por segundo
 
@@ -20,8 +20,8 @@ pygame.mixer.init()
 window = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE + STATUS_HEIGHT))
 pygame.display.set_caption('Mundo de Wumpus')
 clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 28)
-font_big = pygame.font.SysFont(None, 40)
+font = pygame.font.SysFont(None, int(CELL_SIZE * 0.2))      # Fuente normal
+font_big = pygame.font.SysFont(None, int(CELL_SIZE * 0.3))  # Fuente grande
 
 # --- Función para cargar y escalar sprites PNG ---
 def load_sprite(filename, scale):
@@ -76,12 +76,14 @@ def draw_grid(win, board, agent, peligros_revelados):
 # --- Dibuja panel de estado, mensajes e instrucciones ---
 def draw_status(win, agent, message, show_menu):
     pygame.draw.rect(win, GRAY, (0, WINDOW_SIZE, WINDOW_SIZE, STATUS_HEIGHT))
+    menu_msg = font.render("Presiona R para reiniciar o Q para salir", True, BLACK)
     vidas_text = font.render(f'Vidas: {agent.lives}', True, BLACK)
     flecha_text = font.render(f'Flecha: {"Sí" if agent.has_arrow else "No"}', True, BLACK)
     tesoro_text = font.render(f'Tesoro: {"Sí" if agent.has_treasure else "No"}', True, BLACK)
-    win.blit(vidas_text, (10, WINDOW_SIZE + 10))
-    win.blit(flecha_text, (160, WINDOW_SIZE + 10))
-    win.blit(tesoro_text, (320, WINDOW_SIZE + 10))
+    win.blit(menu_msg, (10, WINDOW_SIZE + 5))
+    win.blit(vidas_text, (10, WINDOW_SIZE + 25))
+    win.blit(flecha_text, (160, WINDOW_SIZE + 25))
+    win.blit(tesoro_text, (320, WINDOW_SIZE + 25))
     # Mensaje principal (multi-línea si es largo)
     lines = []
     if message:
@@ -103,11 +105,9 @@ def draw_status(win, agent, message, show_menu):
         BLACK
     )
     win.blit(instrucciones, (10, WINDOW_SIZE + STATUS_HEIGHT - 35))
-    # Menú de reinicio cuando termina el juego
-    if show_menu:
-        menu_msg = font_big.render("Presiona R para reiniciar o Q para salir", True, BLACK)
-        win.blit(menu_msg, (WINDOW_SIZE // 16, WINDOW_SIZE + STATUS_HEIGHT - 75))
 
+#controla el modo si avanza o modo disparo
+modo_disparo = False
 # --- Ciclo principal del juego ---
 while True:
     while running:
@@ -120,6 +120,7 @@ while True:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+
             # Permite movimiento siempre que el mensaje NO sea de muerte, fin o victoria
             elif event.type == pygame.KEYDOWN and not (
                 "pierdes" in message.lower()
@@ -128,29 +129,47 @@ while True:
             ):
                 x, y = agent.get_position()
                 moved = False
-                # Movimiento con flechas
-                if event.key == pygame.K_UP and x > 0:
-                    agent.move('UP')
-                    moved = True
-                elif event.key == pygame.K_DOWN and x < GRID_SIZE - 1:
-                    agent.move('DOWN')
-                    moved = True
-                elif event.key == pygame.K_LEFT and y > 0:
-                    agent.move('LEFT')
-                    moved = True
-                elif event.key == pygame.K_RIGHT and y < GRID_SIZE - 1:
-                    agent.move('RIGHT')
-                    moved = True
-                # Disparo con barra espaciadora
-                elif event.key == pygame.K_SPACE and agent.has_arrow:
-                    if board.shoot_arrow(x, y, 'UP'):
-                        message = "¡Has matado al Wumpus! Se escucha un grito."
-                        scream_sound.play()
-                        heard_scream = True
-                    else:
-                        message = "La flecha no dio en el blanco."
-                    agent.has_arrow = False
 
+                if event.key == pygame.K_SPACE and agent.has_arrow and not modo_disparo:
+                    modo_disparo = True
+                    message = "Modo disparo activado. Usa flechas para apuntar."
+
+                # --- Ejecutar disparo en la dirección presionada ---
+                elif modo_disparo:
+                    direction = None
+                    if event.key == pygame.K_UP:
+                        direction = 'UP'
+                    elif event.key == pygame.K_DOWN:
+                        direction = 'DOWN'
+                    elif event.key == pygame.K_LEFT:
+                        direction = 'LEFT'
+                    elif event.key == pygame.K_RIGHT:
+                        direction = 'RIGHT'
+
+                    if direction:
+                        if board.shoot_arrow(x, y, direction):
+                            message = f"¡Has matado al Wumpus hacia {direction}! Se escucha un grito."
+                            scream_sound.play()
+                            heard_scream = True
+                        else:
+                            message = f"La flecha no dio en el blanco ({direction})."
+                        agent.has_arrow = False
+                        modo_disparo = False  # Salir del modo disparo
+
+                # --- Movimiento normal si no está en modo disparo ---
+                elif not modo_disparo:
+                    if event.key == pygame.K_UP and x > 0:
+                        agent.move('UP')
+                        moved = True
+                    elif event.key == pygame.K_DOWN and x < GRID_SIZE - 1:
+                        agent.move('DOWN')
+                        moved = True
+                    elif event.key == pygame.K_LEFT and y > 0:
+                        agent.move('LEFT')
+                        moved = True
+                    elif event.key == pygame.K_RIGHT and y < GRID_SIZE - 1:
+                        agent.move('RIGHT')
+                        moved = True
                 if moved:
                     pos = agent.get_position()
                     agent.visited.add(pos)
