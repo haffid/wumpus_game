@@ -76,7 +76,7 @@ def draw_grid(win, board, agent, peligros_revelados):
 # --- Dibuja panel de estado, mensajes e instrucciones ---
 def draw_status(win, agent, message, show_menu):
     pygame.draw.rect(win, GRAY, (0, WINDOW_SIZE, WINDOW_SIZE, STATUS_HEIGHT))
-    menu_msg = font.render("Presiona R para reiniciar o Q para salir", True, BLACK)
+    menu_msg = font.render("Presiona A para Auto-Juego, R para reiniciar o Q para salir", True, BLACK)
     vidas_text = font.render(f'Vidas: {agent.lives}', True, BLACK)
     flecha_text = font.render(f'Flecha: {"Sí" if agent.has_arrow else "No"}', True, BLACK)
     tesoro_text = font.render(f'Tesoro: {"Sí" if agent.has_treasure else "No"}', True, BLACK)
