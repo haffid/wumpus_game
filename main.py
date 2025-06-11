@@ -1,7 +1,15 @@
 import pygame
 import os
+import sys
 from src.board import Board
 from src.agent import Agent
+
+# --- NUEVA FUNCIÓN: Para rutas de recursos (imágenes, sonidos, etc.) ---
+def resource_path(relative_path):
+    # Compatible con PyInstaller y ejecución normal
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 # --- CONFIGURACIÓN ---
 CELL_SIZE = 100         # Puedes ajustarlo a 80 o 70 si quieres más pequeño
@@ -23,23 +31,24 @@ clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, int(CELL_SIZE * 0.2))      # Fuente normal
 font_big = pygame.font.SysFont(None, int(CELL_SIZE * 0.3))  # Fuente grande
 
-# --- Función para cargar y escalar sprites PNG ---
+# --- MODIFICA LA FUNCIÓN PARA CARGAR SPRITES ---
 def load_sprite(filename, scale):
-    path = os.path.join('assets', filename)
+    path = resource_path(os.path.join('assets', filename))
     img = pygame.image.load(path).convert_alpha()
     return pygame.transform.scale(img, (scale, scale))
 
-# --- Carga de imágenes ---
+# --- Carga de imágenes (USA resource_path) ---
 adventurer_img = load_sprite('adventurer.png', CELL_SIZE - 10)
 wumpus_img     = load_sprite('wumpus.png',     CELL_SIZE - 10)
 hole_img       = load_sprite('pit.png',        CELL_SIZE - 10)
 treasure_img   = load_sprite('treasure.png',   CELL_SIZE - 10)
 entrance_img   = load_sprite('entrance.png',   CELL_SIZE - 10)
 
-# --- Carga de sonidos ---
-scream_sound = pygame.mixer.Sound(os.path.join('assets', 'scream.wav'))
-win_sound    = pygame.mixer.Sound(os.path.join('assets', 'win.wav'))
-lose_sound   = pygame.mixer.Sound(os.path.join('assets', 'lose.wav'))
+# --- Carga de sonidos (USA resource_path) ---
+scream_sound = pygame.mixer.Sound(resource_path(os.path.join('assets', 'scream.wav')))
+win_sound    = pygame.mixer.Sound(resource_path(os.path.join('assets', 'win.wav')))
+lose_sound   = pygame.mixer.Sound(resource_path(os.path.join('assets', 'lose.wav')))
+
 
 # --- Función para reiniciar todos los valores del juego ---
 def reset_vars():
@@ -129,7 +138,7 @@ while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                exit()
+                sys.exit()
 
             # Permite movimiento siempre que el mensaje NO sea de muerte, fin o victoria
             elif event.type == pygame.KEYDOWN and not (
@@ -350,7 +359,7 @@ while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                exit()
+                sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
                     # Reiniciar juego completo
@@ -358,6 +367,6 @@ while True:
                     break
                 elif event.key == pygame.K_q:
                     pygame.quit()
-                    exit()
+                    sys.exit()
         if running:
             break
