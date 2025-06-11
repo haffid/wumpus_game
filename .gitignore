@@ -1,0 +1,8 @@
+# Ignora archivos y carpetas generadas automáticamente
+__pycache__/
+dist/
+build/
+*.spec
+*.exe
+.venv/
+venv/
