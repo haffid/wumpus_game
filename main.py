@@ -32,7 +32,7 @@ def load_sprite(filename, scale):
 # --- Carga de imágenes ---
 adventurer_img = load_sprite('adventurer.png', CELL_SIZE - 10)
 wumpus_img     = load_sprite('wumpus.png',     CELL_SIZE - 10)
-hole_img       = load_sprite('hole.png',       CELL_SIZE - 10)
+hole_img       = load_sprite('pit.png',        CELL_SIZE - 10)
 treasure_img   = load_sprite('treasure.png',   CELL_SIZE - 10)
 entrance_img   = load_sprite('entrance.png',   CELL_SIZE - 10)
 
@@ -105,9 +105,19 @@ def draw_status(win, agent, message, show_menu):
         BLACK
     )
     win.blit(instrucciones, (10, WINDOW_SIZE + STATUS_HEIGHT - 35))
+    if modo_auto_juego:
+        auto_msg = font.render("Modo auto-juego: ACTIVADO", True, RED)
+        win.blit(auto_msg, (10, WINDOW_SIZE + STATUS_HEIGHT - 60))
+
 
 #controla el modo si avanza o modo disparo
 modo_disparo = False
+# Controla si el agente juega solo
+modo_auto_juego = False
+# Temporizador para auto_move
+ultimo_auto_move = 0
+intervalo_auto_move = 1000  # milisegundos = 1 segundos
+
 # --- Ciclo principal del juego ---
 while True:
     while running:
@@ -129,6 +139,11 @@ while True:
             ):
                 x, y = agent.get_position()
                 moved = False
+
+                # Tecla A → activar/desactivar modo auto-juego
+                if event.key == pygame.K_a:
+                    modo_auto_juego = not modo_auto_juego
+                    message = "Modo auto-juego ACTIVADO" if modo_auto_juego else "Modo auto-juego DESACTIVADO"
 
                 if event.key == pygame.K_SPACE and agent.has_arrow and not modo_disparo:
                     modo_disparo = True
@@ -235,6 +250,95 @@ while True:
                         if 'Grito' in percepciones:
                             msg.append("¡Grito!")
                         message = ", ".join(msg) if msg else ""
+
+        # --- AUTO JUEGO ---
+        if modo_auto_juego and running:
+            tiempo_actual = pygame.time.get_ticks()
+            if tiempo_actual - ultimo_auto_move >= intervalo_auto_move:
+                direction = agent.auto_move(board, heard_scream)
+                if direction:
+                    agent.move(direction)
+                    moved = True
+                    agent.visited.add(agent.get_position())
+                    
+                    pos = agent.get_position()
+                    percepciones = board.perceive(pos[0], pos[1], heard_scream)
+                    
+                    # Si cae en un pozo
+                    if 'Pozo' in percepciones:
+                        agent.lives -= 1
+                        peligros_revelados.add(pos)
+                        agent.danger_cells.add(pos)
+                        if agent.lives == 0:
+                            message = "¡Has perdido todas tus vidas! Fin del juego."
+                            lose_sound.play()
+                            show_menu = True
+                            running = False
+                        else:
+                            message = "¡Te caíste en un pozo! Pierdes una vida."
+                            window.fill(GRAY)
+                            draw_grid(window, board, agent, peligros_revelados)
+                            draw_status(window, agent, message, False)
+                            pygame.display.flip()
+                            pygame.time.delay(1500)
+                            agent.x, agent.y = 0, 0
+                            agent.visited.add((0, 0))
+                            message = ""
+                    
+                    # Si lo devora el Wumpus
+                    elif 'Wumpus' in percepciones:
+                        agent.lives -= 1
+                        peligros_revelados.add(pos)
+                        agent.danger_cells.add(pos)
+                        
+                        # si tengo flecha, guardo la posicion del wumpus para ir a cazarlo
+                        if agent.has_arrow:
+                            agent.wumpus_target = pos
+
+                        if agent.lives == 0:
+                            message = "¡Has perdido todas tus vidas! Fin del juego."
+                            lose_sound.play()
+                            show_menu = True
+                            running = False
+                        else:
+                            message = "¡El Wumpus te devoró! Pierdes una vida."
+                            window.fill(GRAY)
+                            draw_grid(window, board, agent, peligros_revelados)
+                            draw_status(window, agent, message, False)
+                            pygame.display.flip()
+                            pygame.time.delay(1500)
+                            agent.x, agent.y = 0, 0
+                            agent.visited.add((0, 0))
+                            message = ""
+                    
+                    # Si encuentra el tesoro
+                    elif 'Tesoro' in percepciones and not agent.has_treasure:
+                        message = "¡Encontraste el tesoro!"
+                        agent.has_treasure = True
+                        board.grid[pos[0]][pos[1]] = ''
+                        agent.safe_cells.add(pos)
+                        agent.visited.add(pos)
+                        win_sound.play()
+                    
+                    # Si sale con el tesoro por la entrada
+                    elif agent.has_treasure and pos == (0, 0):
+                        message = "¡FELICIDADES! Has salido con el tesoro. ¡Victoria!"
+                        win_sound.play()
+                        show_menu = True
+                        running = False
+                    
+                    # Mensajes de percepción normal (opcional)
+                    else:
+                        msg = []
+                        if 'Viento' in percepciones:
+                            msg.append("Percibes viento")
+                        if 'Hedor' in percepciones:
+                            msg.append("Percibes hedor")
+                        if 'Grito' in percepciones:
+                            agent.wumpus_target = None
+                            msg.append("¡Grito! El agente disparó la flecha automáticamente.")
+                        message = ", ".join(msg) if msg else ""
+                ultimo_auto_move = tiempo_actual
         clock.tick(FPS)
 
     # --- Menú de reinicio/salir cuando termina el juego ---

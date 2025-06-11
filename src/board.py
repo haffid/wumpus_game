@@ -12,7 +12,13 @@ class Board:
     def place_elements(self):
         # Coloca la entrada siempre en (0, 0)
         self.grid[0][0] = 'E'
-        posiciones_libres = [(i, j) for i in range(TAM) for j in range(TAM) if self.grid[i][j] == '']
+
+        # Zona segura inicial: (0,0), (0,1), (1,0), (1,1)
+        zona_segura_inicial = {(0,0), (0,1), (1,0), (1,1)}
+
+        # posiciones_libres = [(i, j) for i in range(TAM) for j in range(TAM) if self.grid[i][j] == '']
+        posiciones_libres = [(i, j) for i in range(TAM) for j in range(TAM)
+                            if self.grid[i][j] == '' and (i, j) not in zona_segura_inicial]
 
         # Coloca Wumpus
         x, y = random.choice(posiciones_libres)
